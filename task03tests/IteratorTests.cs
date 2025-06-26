@@ -2,6 +2,7 @@ using Xunit;
 using task03;
 
 namespace task03tests;
+
 public class IteratorTests
 {
     [Fact]
