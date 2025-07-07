@@ -29,12 +29,12 @@ namespace task09
             foreach (var classType in classTypes)
             {
                 Console.WriteLine($"\nКласс: {classType.Name}");
-                
+
                 var classAttributes = classType.GetCustomAttributes();
                 if (classAttributes.Any())
                 {
                     Console.WriteLine("Атрибуты класса:");
-                    classAttributes.ToList().ForEach(attr => 
+                    classAttributes.ToList().ForEach(attr =>
                         Console.WriteLine($"  {attr.GetType().Name}"));
                 }
 
@@ -42,24 +42,24 @@ namespace task09
                 if (constructors.Any())
                 {
                     Console.WriteLine("Конструкторы:");
-                    constructors.ToList().ForEach(ctor => 
+                    constructors.ToList().ForEach(ctor =>
                     {
                         Console.WriteLine($"  {ctor.Name}");
-                        ctor.GetParameters().ToList().ForEach(p => 
+                        ctor.GetParameters().ToList().ForEach(p =>
                             Console.WriteLine($"    Параметр: {p.ParameterType} {p.Name}"));
                     });
                 }
 
                 var methods = classType.GetMethods()
                     .Where(m => !m.IsSpecialName);
-                
+
                 if (methods.Any())
                 {
                     Console.WriteLine("Методы:");
-                    methods.ToList().ForEach(m => 
+                    methods.ToList().ForEach(m =>
                     {
                         Console.WriteLine($"  {m.ReturnType} {m.Name}()");
-                        m.GetParameters().ToList().ForEach(p => 
+                        m.GetParameters().ToList().ForEach(p =>
                             Console.WriteLine($"    Параметр: {p.ParameterType} {p.Name}"));
                     });
                 }
@@ -68,7 +68,7 @@ namespace task09
                 if (properties.Any())
                 {
                     Console.WriteLine("Свойства:");
-                    properties.ToList().ForEach(p => 
+                    properties.ToList().ForEach(p =>
                         Console.WriteLine($"  {p.PropertyType} {p.Name}"));
                 }
             }
