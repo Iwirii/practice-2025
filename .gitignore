@@ -1,0 +1,17 @@
+bin/
+obj/
+*.exe
+*.pdb
+*.cache
+
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+
+packages/
+*.nupkg
+
+.DS_Store
+Thumbs.db
