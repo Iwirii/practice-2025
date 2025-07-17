@@ -19,7 +19,7 @@ class Optimizer
         double[] times = TestThreads(a, b, f, step, threads, tests);
         (int bestThreads, double bestTime) = FindBestResult(threads, times);
         double singleTime = TestSingleThread(a, b, f, step, tests);
-        
+
         SaveResults(step, bestThreads, bestTime, singleTime, threads, times);
     }
 
@@ -62,7 +62,7 @@ class Optimizer
         return sw.Elapsed.TotalMilliseconds / tests;
     }
 
-    static void SaveResults(double step, int bestThreads, double bestTime, 
+    static void SaveResults(double step, int bestThreads, double bestTime,
                          double singleTime, int[] threads, double[] times)
     {
         var plt = new Plot();
@@ -72,12 +72,12 @@ class Optimizer
         plt.YLabel("Потоки");
         plt.SavePng("graph.png", 800, 600);
 
-        string report = 
+        string report =
             $"Шаг: {step}\n" +
             $"Оптимальное число потоков: {bestThreads}\n" +
             $"Многопоток: {bestTime:F4} мс\n" +
             $"Однопоток: {singleTime:F4} мс\n" +
-            $"Разница: {(singleTime - bestTime)/singleTime*100:F2}%";
+            $"Разница: {(singleTime - bestTime) / singleTime * 100:F2}%";
 
         File.WriteAllText("report.txt", report);
     }
