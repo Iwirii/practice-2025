@@ -5,9 +5,40 @@ public interface ICommand
     void Execute();
 }
 
+public interface ILongRunningCommand : ICommand
+{
+    bool IsCompleted { get; }
+}
+
+public interface IScheduler
+{
+    bool HasCommand();
+    ICommand? Select();
+    void Add(ICommand cmd);
+}
+
+public class RoundRobinScheduler : IScheduler
+{
+    private readonly ConcurrentQueue<ICommand> _commands = new();
+    
+    public bool HasCommand() => !_commands.IsEmpty;
+    
+    public ICommand? Select()
+    {
+        if (_commands.TryDequeue(out var command))
+        {
+            return command;
+        }
+        return null;
+    }
+    
+    public void Add(ICommand cmd) => _commands.Enqueue(cmd);
+}
+
 public class ServerThread
 {
     private readonly BlockingCollection<ICommand> _commands = new();
+    private readonly IScheduler _scheduler = new RoundRobinScheduler();
     private volatile bool _isRunning;
     private Thread? _thread;
 
@@ -22,9 +53,30 @@ public class ServerThread
     {
         while (_isRunning)
         {
-            if (_commands.TryTake(out var command, 100))
+            if (_commands.TryTake(out var newCommand, TimeSpan.FromMilliseconds(100)))
             {
-                command.Execute();
+                if (newCommand is ILongRunningCommand longRunningCommand)
+                {
+                    _scheduler.Add(newCommand);
+                }
+                else
+                {
+                    newCommand.Execute();
+                }
+            }
+
+            while (_scheduler.HasCommand())
+            {
+                var command = _scheduler.Select();
+                if (command != null)
+                {
+                    command.Execute();
+                    
+                    if (command is ILongRunningCommand longRunningCommand && !longRunningCommand.IsCompleted)
+                    {
+                        _scheduler.Add(command);
+                    }
+                }
             }
         }
     }
