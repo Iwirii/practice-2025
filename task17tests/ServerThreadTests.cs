@@ -3,13 +3,13 @@ namespace task17tests;
 
 public class ServerThreadTests
 {
-        private class TestCommand : ICommand
+    private class TestCommand : ICommand
     {
         private readonly Action _action;
         public TestCommand(Action action) => _action = action;
         public void Execute() => _action();
     }
-    
+
     [Fact]
     public void HardStop_StopsImmediately()
     {
@@ -51,18 +51,18 @@ public class ServerThreadTests
         server.WaitForCompletion();
     }
 
-     [Fact]
+    [Fact]
     public void SoftStop_WaitsForAllCommands()
     {
         var server = new ServerThread();
         server.Start();
-        
+
         int counter = 0;
         server.Enqueue(new TestCommand(() => counter++));
         server.Enqueue(new TestCommand(() => counter++));
         server.Enqueue(new SoftStopCommand(server));
-        
+
         server.WaitForCompletion();
-        Assert.Equal(2, counter); 
+        Assert.Equal(2, counter);
     }
 }
