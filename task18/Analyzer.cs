@@ -2,6 +2,7 @@
 using ScottPlot;
 
 namespace task18;
+
 public class PerformanceAnalyzer
 {
     public class TimedLongCommand : ILongRunningCommand
