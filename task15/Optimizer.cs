@@ -70,7 +70,7 @@ class Optimizer
         plt.Title("Время выполнения");
         plt.XLabel("Время (мс)");
         plt.YLabel("Потоки");
-        plt.SavePng("graph.png", 800, 600);
+        plt.SavePng("graph.png", 600, 400);
 
         string report =
             $"Шаг: {step}\n" +
