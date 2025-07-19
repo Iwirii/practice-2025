@@ -1,7 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 
 public interface ICommand
 {
@@ -98,12 +96,12 @@ public class ServerThread
         private readonly Action _action;
         private int _executionCount;
         private readonly List<long> _executionTimes = new List<long>();
-        
+
         public LongRunningCommand(Action action)
         {
             _action = action;
         }
-        
+
         public void Execute()
         {
             var sw = Stopwatch.StartNew();
@@ -112,9 +110,28 @@ public class ServerThread
             sw.Stop();
             _executionTimes.Add(sw.ElapsedMilliseconds);
         }
-        
+
         public int ExecutionCount => _executionCount;
         public IReadOnlyList<long> ExecutionTimes => _executionTimes.AsReadOnly();
+    }
+    
+    public class TestCommand : ICommand
+    {
+        private readonly int _id;
+        private int _counter = 0;
+
+        public TestCommand(int id)
+        {
+            _id = id;
+        }
+
+        public int Id => _id;
+        public int Counter => _counter;
+
+        public void Execute()
+        {
+            Console.WriteLine($"Поток {_id} вызов {++_counter}");
+        }
     }
 }
 
