@@ -1,99 +1,52 @@
-﻿using System.Diagnostics;
-using ScottPlot;
+﻿using ScottPlot;
 
-namespace task18;
-
-public class PerformanceAnalyzer
+class Program
 {
-    public class TimedLongCommand : ILongRunningCommand
+    static void Main()
     {
-        public int Id { get; }
-        public List<long> StepTimes { get; } = new();
-        private int _currentStep;
-        private readonly int _totalSteps;
-        private readonly Action<int> _action;
+        var scheduler = new RoundRobinScheduler();
+        var server = new ServerThread(scheduler);
 
-        public bool IsCompleted => _currentStep >= _totalSteps;
+        int commandsCount = 5;
 
-        public TimedLongCommand(int id, int steps, Action<int> action)
+        var commands = new List<ServerThread.LongRunningCommand>();
+
+        for (int i = 0; i < commandsCount; i++)
         {
-            Id = id;
-            _totalSteps = steps;
-            _action = action;
-        }
-
-        public void Execute()
-        {
-            if (IsCompleted) return;
-
-            var sw = Stopwatch.StartNew();
-            _action(_currentStep);
-            sw.Stop();
-
-            StepTimes.Add(sw.ElapsedMilliseconds);
-            _currentStep++;
-        }
-    }
-
-    public static void Main()
-    {
-        var server = new ServerThread();
-        var commands = new List<TimedLongCommand>();
-        var random = new Random();
-
-        for (int i = 0; i < 5; i++)
-        {
-            var cmd = new TimedLongCommand(
-                id: i + 1,
-                steps: 3,
-                action: step => Thread.Sleep(random.Next(50, 200))
-            );
-            commands.Add(cmd);
-            server.Enqueue(cmd);
+            int delay = 50 + i * 5;
+            commands.Add(new ServerThread.LongRunningCommand(() => Thread.Sleep(delay)));
         }
 
         server.Start();
 
-        while (commands.Any(c => !c.IsCompleted))
-            Thread.Sleep(100);
+        foreach (var cmd in commands)
+            server.Enqueue(cmd);
+
+        Thread.Sleep(2000);
 
         server.Enqueue(new SoftStopCommand(server));
         server.WaitForCompletion();
 
-        GenerateReport(commands);
-    }
-
-    private static void GenerateReport(List<TimedLongCommand> commands)
-    {
         var plt = new Plot();
-        plt.Title("Время выполнения команд");
+        double[] commandNumbers = Enumerable.Range(1, commandsCount).Select(x => (double)x).ToArray(); 
+        double[] avgTimes = commands.Select(c => c.ExecutionTimes.Any() ? c.ExecutionTimes.Average() : 0).ToArray();
+
+        plt.Title("Среднее время выполнения команд");
+        plt.XLabel("Среднее время (мс)");
         plt.YLabel("Номер команды");
-        plt.XLabel("Время (мс)");
+        
+        var scatter = plt.Add.Scatter(avgTimes, commandNumbers);
+        
+        plt.SavePng("graph.png", 600, 300);
+
+        string report = "Отчет\n\n";
+        report += "Номер команды | Среднее время (мс)\n";
 
         for (int i = 0; i < commands.Count; i++)
         {
-            var times = commands[i].StepTimes;
-            plt.Add.Scatter(
-                times.Select(t => (double)t).ToArray(),
-                Enumerable.Repeat((double)i + 1, times.Count).ToArray()
-            );
+            report += $"{i + 1,13} | {commands[i].ExecutionTimes.Average(),18:F2}\n";
         }
 
-        plt.SavePng("graph.png", 600, 300);
-
-        var report = new System.Text.StringBuilder();
-        report.AppendLine($"Всего команд: {commands.Count}");
-        report.AppendLine($"Общее время выполнения: {commands.Sum(c => c.StepTimes.Sum())}мс");
-        report.AppendLine("\nДетали по командам:");
-
-        foreach (var cmd in commands.OrderBy(c => c.Id))
-        {
-            report.AppendLine($"\nКоманда {cmd.Id}:");
-            report.AppendLine($"  Шагов: {cmd.StepTimes.Count}");
-            report.AppendLine($"  Общее время: {cmd.StepTimes.Sum()}мс");
-            report.AppendLine($"  Среднее время шага: {cmd.StepTimes.Average():F1}мс");
-        }
-
-        File.WriteAllText("report.txt", report.ToString());
+        File.WriteAllText("report.txt", report);
     }
 }

@@ -1,35 +1,31 @@
 ﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 
 public interface ICommand
 {
     void Execute();
 }
 
-public interface ILongRunningCommand : ICommand
-{
-    bool IsCompleted { get; }
-}
-
 public interface IScheduler
 {
     bool HasCommand();
-    ICommand? Select();
+    ICommand Select();
     void Add(ICommand cmd);
 }
 
 public class RoundRobinScheduler : IScheduler
 {
-    private readonly ConcurrentQueue<ICommand> _commands = new();
+    private readonly Queue<ICommand> _commands = new();
     
-    public bool HasCommand() => !_commands.IsEmpty;
+    public bool HasCommand() => _commands.Count > 0;
     
-    public ICommand? Select()
+    public ICommand Select()
     {
-        if (_commands.TryDequeue(out var command))
-        {
-            return command;
-        }
-        return null;
+        var command = _commands.Dequeue();
+        _commands.Enqueue(command);
+        return command;
     }
     
     public void Add(ICommand cmd) => _commands.Enqueue(cmd);
@@ -38,9 +34,18 @@ public class RoundRobinScheduler : IScheduler
 public class ServerThread
 {
     private readonly BlockingCollection<ICommand> _commands = new();
-    private readonly IScheduler _scheduler = new RoundRobinScheduler();
+    private readonly IScheduler _scheduler;
     private volatile bool _isRunning;
     private Thread? _thread;
+
+    public ServerThread() : this(new RoundRobinScheduler())
+    {
+    }
+
+    public ServerThread(IScheduler scheduler)
+    {
+        _scheduler = scheduler;
+    }
 
     public void Start()
     {
@@ -53,31 +58,20 @@ public class ServerThread
     {
         while (_isRunning)
         {
-            if (_commands.TryTake(out var newCommand, TimeSpan.FromMilliseconds(100)))
+            if (_commands.TryTake(out var command))
             {
-                if (newCommand is ILongRunningCommand longRunningCommand)
-                {
-                    _scheduler.Add(newCommand);
-                }
-                else
-                {
-                    newCommand.Execute();
-                }
+                command.Execute();
+                continue;
             }
 
-            while (_scheduler.HasCommand())
+            if (_scheduler.HasCommand())
             {
-                var command = _scheduler.Select();
-                if (command != null)
-                {
-                    command.Execute();
-                    
-                    if (command is ILongRunningCommand longRunningCommand && !longRunningCommand.IsCompleted)
-                    {
-                        _scheduler.Add(command);
-                    }
-                }
+                var schedulerCommand = _scheduler.Select();
+                schedulerCommand.Execute();
+                continue;
             }
+
+            Thread.Sleep(10);
         }
     }
 
@@ -98,6 +92,30 @@ public class ServerThread
     }
 
     public void WaitForCompletion() => _thread?.Join();
+
+    public class LongRunningCommand : ICommand
+    {
+        private readonly Action _action;
+        private int _executionCount;
+        private readonly List<long> _executionTimes = new List<long>();
+        
+        public LongRunningCommand(Action action)
+        {
+            _action = action;
+        }
+        
+        public void Execute()
+        {
+            var sw = Stopwatch.StartNew();
+            _action();
+            _executionCount++;
+            sw.Stop();
+            _executionTimes.Add(sw.ElapsedMilliseconds);
+        }
+        
+        public int ExecutionCount => _executionCount;
+        public IReadOnlyList<long> ExecutionTimes => _executionTimes.AsReadOnly();
+    }
 }
 
 public class HardStopCommand : ICommand
