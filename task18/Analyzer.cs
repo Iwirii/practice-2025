@@ -28,15 +28,15 @@ class Program
         server.WaitForCompletion();
 
         var plt = new Plot();
-        double[] commandNumbers = Enumerable.Range(1, commandsCount).Select(x => (double)x).ToArray(); 
+        double[] commandNumbers = Enumerable.Range(1, commandsCount).Select(x => (double)x).ToArray();
         double[] avgTimes = commands.Select(c => c.ExecutionTimes.Any() ? c.ExecutionTimes.Average() : 0).ToArray();
 
         plt.Title("Среднее время выполнения команд");
         plt.XLabel("Среднее время (мс)");
         plt.YLabel("Номер команды");
-        
+
         var scatter = plt.Add.Scatter(avgTimes, commandNumbers);
-        
+
         plt.SavePng("graph.png", 600, 300);
 
         string report = "Отчет\n\n";
